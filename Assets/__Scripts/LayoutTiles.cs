@@ -109,6 +109,17 @@ public class LayoutTiles : MonoBehaviour {
                 ti.type = type;
                 ti.height = height;
                 ti.tex = tileTexStr;
+
+                if (rawType == type) continue;
+
+                switch (rawType)
+                {
+                    case "X":
+                        Mage.S.pos = ti.pos;
+                        break;
+                }
+
+                // more to come here
             }
         }
     }

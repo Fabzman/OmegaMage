@@ -108,6 +108,73 @@ NavMeshSettings:
     tileSize: 256
     accuratePlacement: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1001 &684279552
+Prefab:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 400016, guid: 06d786368719c4ecd931c5fc5fd9bd73, type: 2}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400016, guid: 06d786368719c4ecd931c5fc5fd9bd73, type: 2}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400016, guid: 06d786368719c4ecd931c5fc5fd9bd73, type: 2}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400016, guid: 06d786368719c4ecd931c5fc5fd9bd73, type: 2}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400016, guid: 06d786368719c4ecd931c5fc5fd9bd73, type: 2}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400016, guid: 06d786368719c4ecd931c5fc5fd9bd73, type: 2}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400016, guid: 06d786368719c4ecd931c5fc5fd9bd73, type: 2}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 400016, guid: 06d786368719c4ecd931c5fc5fd9bd73, type: 2}
+      propertyPath: m_RootOrder
+      value: 2
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_ParentPrefab: {fileID: 100100000, guid: 06d786368719c4ecd931c5fc5fd9bd73, type: 2}
+  m_IsPrefabParent: 0
+--- !u!1 &684279553 stripped
+GameObject:
+  m_PrefabParentObject: {fileID: 100016, guid: 06d786368719c4ecd931c5fc5fd9bd73, type: 2}
+  m_PrefabInternal: {fileID: 684279552}
+--- !u!114 &684279554
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 684279553}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc01cbae9cbbd6c458c80e930fc5eebc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mTapTime: 0.1
+  mDragDist: 5
+  activeScreenWidth: 1
+  _____: 0
+  mPhase: 0
+  mouseInfos: []
+--- !u!4 &684279555 stripped
+Transform:
+  m_PrefabParentObject: {fileID: 400000, guid: 06d786368719c4ecd931c5fc5fd9bd73, type: 2}
+  m_PrefabInternal: {fileID: 684279552}
 --- !u!1 &1792723041
 GameObject:
   m_ObjectHideFlags: 0
@@ -186,6 +253,7 @@ GameObject:
   - component: {fileID: 1834660609}
   - component: {fileID: 1834660608}
   - component: {fileID: 1834660613}
+  - component: {fileID: 1834660614}
   m_Layer: 0
   m_Name: _MainCamera
   m_TagString: MainCamera
@@ -286,3 +354,17 @@ MonoBehaviour:
   roomsXMLR:
     xmlText: 
   tileAnchor: {fileID: 0}
+--- !u!114 &1834660614
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1834660607}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 189907535ac4c3249af6465c1239a318, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetTransform: {fileID: 684279555}
+  camEasing: 0.1
+  followOffset: {x: 0, y: 0, z: -2}

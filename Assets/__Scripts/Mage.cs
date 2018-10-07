@@ -1,0 +1,249 @@
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using System.Linq;
+
+public enum Mphase
+{
+    idle,
+    down,
+    drag
+}
+
+[System.Serializable]
+
+public class MouseInfo
+{
+    public Vector3 loc;
+    public Vector3 screenLoc;
+    public Ray ray;
+    public float time;
+    public RaycastHit hitInfo;
+    public bool hit;
+
+    public RaycastHit Raycast ()
+    {
+        hit = Physics.Raycast(ray, out hitInfo);
+        return (hitInfo);
+    }
+
+    public RaycastHit Raycast (int mask)
+    {
+        hit = Physics.Raycast(ray, out hitInfo, mask);
+        return (hitInfo);
+    }
+}
+
+public class Mage : PT_MonoBehaviour
+{
+
+    static public Mage S;
+    static public bool DEBUG = true;
+
+    public float mTapTime = 0.1f;
+    public float mDragDist = 5;
+
+    public float activeScreenWidth = 1;
+
+    public float speed = 2;
+
+    public bool _____;
+
+    public Mphase mPhase = Mphase.idle;
+    public List<MouseInfo> mouseInfos = new List<MouseInfo>();
+
+    public bool walking = false;
+    public Vector3 walkTarget;
+    public Transform characterTrans;
+
+
+    private void Awake()
+    {
+        S = this;
+        mPhase = Mphase.idle;
+
+        characterTrans = transform.Find("CharacterTrans");
+    }
+
+    // Use this for initialization
+    void Start()
+    {
+
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        bool b0Down = Input.GetMouseButtonDown(0);
+        bool b0Up = Input.GetMouseButtonUp(0);
+
+        bool inActiveArea = (float)Input.mousePosition.x / Screen.width < activeScreenWidth;
+
+        if (mPhase == Mphase.idle)
+        {
+            if (b0Down && inActiveArea)
+            {
+                mouseInfos.Clear();
+                AddMouseInfo();
+
+                if (mouseInfos[0].hit)
+                {
+                    MouseDown();
+                    mPhase = Mphase.down;
+                }
+            }
+        }
+
+        if (mPhase == Mphase.down)
+        {
+            AddMouseInfo();
+
+            if (b0Up)
+            {
+                MouseTap();
+                mPhase = Mphase.idle;
+            }
+
+            else if (Time.time - mouseInfos[0].time > mTapTime)
+            {
+                float dragDist = (lastMouseInfo.screenLoc - mouseInfos[0].screenLoc).magnitude;
+
+                if (dragDist >= mDragDist)
+                {
+                    mPhase = Mphase.drag;
+                }
+            }
+        }
+
+        if (mPhase == Mphase.drag)
+        {
+            AddMouseInfo();
+
+            if (b0Up)
+            {
+                MouseDragUp();
+                mPhase = Mphase.idle;
+            }
+
+            else
+            {
+                MouseDrag();
+            }
+        }
+    }
+
+    MouseInfo AddMouseInfo()
+    {
+        MouseInfo mInfo = new MouseInfo();
+        mInfo.screenLoc = Input.mousePosition;
+        mInfo.loc = Utils.mouseLoc;
+        mInfo.ray = Utils.mouseRay;
+
+        mInfo.time = Time.time;
+        mInfo.Raycast();
+
+        if (mouseInfos.Count == 0)
+        {
+            mouseInfos.Add(mInfo);
+        }
+
+        else
+        {
+            float lastTime = mouseInfos[mouseInfos.Count - 1].time;
+
+            if (mInfo.time != lastTime)
+            {
+                mouseInfos.Add(mInfo);
+            }
+        }
+
+        return (mInfo);
+    }
+
+    public MouseInfo lastMouseInfo
+    {
+        get
+        {
+            if (mouseInfos.Count == 0) return (null);
+            return (mouseInfos[mouseInfos.Count - 1]);
+        }
+    }
+
+    void MouseDown()
+    {
+        if (DEBUG) print("Mage.MouseDown()");
+    }
+
+    void MouseTap()
+    {
+        if (DEBUG) print("Mage.MouseTap()");
+        WalkTo(lastMouseInfo.loc);
+    }
+
+    void MouseDrag()
+    {
+        if (DEBUG) print("Mage.MouseDrag()");
+    }
+
+    void MouseDragUp()
+    {
+        if (DEBUG) print("Mage.MouseDragUp()");
+    }
+
+    public void WalkTo(Vector3 xTarget)
+    {
+        walkTarget = xTarget;
+        walkTarget.z = 0;
+        walking = true;
+        Face(walkTarget);
+    }
+
+    public void Face(Vector3 poi)
+    {
+        Vector3 delta = poi - pos;
+        float rZ = Mathf.Rad2Deg * Mathf.Atan2(delta.y, delta.x);
+        characterTrans.rotation = Quaternion.Euler(0, 0, rZ);
+    }
+
+    public void StopWalking()
+    {
+        walking = false;
+        rigidbody.velocity = Vector3.zero;
+    }
+
+    void FixedUpdate()
+    {
+        if (walking)
+        {
+            if ((walkTarget - pos).magnitude < speed * Time.fixedDeltaTime)
+            {
+                pos = walkTarget;
+                StopWalking();
+            }
+
+            else
+            {
+                rigidbody.velocity = (walkTarget - pos).normalized * speed;
+            }
+        }
+
+        else
+        {
+            rigidbody.velocity = Vector3.zero;
+        }
+    }
+
+    void OnCollisionEnter(Collision coll)
+    {
+        GameObject otherGO = coll.gameObject;
+        Tile ti = otherGO.GetComponent<Tile>();
+
+        if (ti != null)
+        {
+            if (ti.height > 0)
+            {
+                StopWalking();
+            }
+        }
+    }
+}
