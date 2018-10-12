@@ -10,6 +10,16 @@ public enum Mphase
     drag
 }
 
+public enum ElementType
+{
+    earth,
+    water,
+    air,
+    fire,
+    aether,
+    none
+}
+
 [System.Serializable]
 
 public class MouseInfo
@@ -41,21 +51,56 @@ public class Mage : PT_MonoBehaviour
     static public bool DEBUG = true;
 
     public float mTapTime = 0.1f;
+    public GameObject tapIndicatorPrefab;
     public float mDragDist = 5;
 
     public float activeScreenWidth = 1;
 
     public float speed = 2;
 
+    public GameObject[] elementPrefabs;
+    public float elementRotDist = 0.5f;
+    public float elementRotSpeed = 0.5f;
+    public int maxNumSelectedElements = 1;
+    public Color[] elementColors;
+
+    public float lineMinDelta = 0.1f;
+    public float lineMaxDelta = 0.5f;
+    public float lineMaxLength = 8f;
+
+    public GameObject fireGroundSpellPrefab;
+
+    public float health = 4;
+    public float damageTime = -100;
+    public float knockbackDist = 1;
+    public float knockbackDur = 0.5f;
+    public float invincibleDur = 0.5f;
+    public int invTimesToBlink = 4;
+
     public bool _____;
+
+    private bool invincibleBool = false;
+    private bool knockbackBool = false;
+    private Vector3 knockbackDir;
+    private Transform viewCharacterTrans;
+
+    protected Transform spellAnchor;
+
+    public float totalLineLength;
+
+    public List<Vector3> linePts;
+    protected LineRenderer liner;
+    protected float lineZ = -0.1f;
 
     public Mphase mPhase = Mphase.idle;
     public List<MouseInfo> mouseInfos = new List<MouseInfo>();
+    public string actionStartTag;
 
     public bool walking = false;
     public Vector3 walkTarget;
     public Transform characterTrans;
 
+    public List<Element> selectedElements = new List<Element>();
 
     private void Awake()
     {
@@ -63,6 +108,13 @@ public class Mage : PT_MonoBehaviour
         mPhase = Mphase.idle;
 
         characterTrans = transform.Find("CharacterTrans");
+        viewCharacterTrans = characterTrans.Find("View_Character");
+
+        liner = GetComponent<LineRenderer>();
+        liner.enabled = false;
+
+        GameObject saGO = new GameObject("Spell Anchor");
+        spellAnchor = saGO.transform;
     }
 
     // Use this for initialization
@@ -112,6 +164,11 @@ public class Mage : PT_MonoBehaviour
                 {
                     mPhase = Mphase.drag;
                 }
+
+                if (selectedElements.Count == 0)
+                {
+                    mPhase = Mphase.drag;
+                }
             }
         }
 
@@ -130,6 +187,8 @@ public class Mage : PT_MonoBehaviour
                 MouseDrag();
             }
         }
+
+        OrbitSelectedElements();
     }
 
     MouseInfo AddMouseInfo()
@@ -172,22 +231,91 @@ public class Mage : PT_MonoBehaviour
     void MouseDown()
     {
         if (DEBUG) print("Mage.MouseDown()");
+        GameObject clickedGO = mouseInfos[0].hitInfo.collider.gameObject;
+        GameObject taggedParent = Utils.FindTaggedParent(clickedGO);
+
+        if (taggedParent == null)
+        {
+            actionStartTag = "";
+        }
+
+        else
+        {
+            actionStartTag = taggedParent.tag;
+        }
     }
 
     void MouseTap()
     {
         if (DEBUG) print("Mage.MouseTap()");
-        WalkTo(lastMouseInfo.loc);
+
+        switch (actionStartTag)
+        {
+            case "Mage":
+                break;
+            case "Ground":
+                WalkTo(lastMouseInfo.loc);
+                ShowTap(lastMouseInfo.loc);
+                break;
+        }
     }
 
     void MouseDrag()
     {
         if (DEBUG) print("Mage.MouseDrag()");
+
+        if (actionStartTag != "Ground") return;
+
+        if (selectedElements.Count == 0)
+        {
+            WalkTo(mouseInfos[mouseInfos.Count - 1].loc);
+        }
+
+        else
+        {
+            AddPointToLiner(mouseInfos[mouseInfos.Count - 1].loc);
+        }
     }
 
     void MouseDragUp()
     {
         if (DEBUG) print("Mage.MouseDragUp()");
+
+        if (actionStartTag != "Ground") return;
+
+        if (selectedElements.Count == 0)
+        {
+            StopWalking();
+        }
+
+        else
+        {
+            CastGroundSpell();
+            ClearLiner();
+        }
+    }
+
+    void CastGroundSpell()
+    {
+        if (selectedElements.Count == 0) return;
+
+        switch (selectedElements[0].type)
+        {
+            case ElementType.fire:
+                GameObject fireGO;
+
+                foreach (Vector3 pt in linePts)
+                {
+                    fireGO = Instantiate(fireGroundSpellPrefab) as GameObject;
+                    fireGO.transform.parent = spellAnchor;
+                    fireGO.transform.position = pt;
+                }
+
+                break;
+                //TODO: Add other elements types later
+        }
+
+        ClearElements();
     }
 
     public void WalkTo(Vector3 xTarget)
@@ -213,6 +341,33 @@ public class Mage : PT_MonoBehaviour
 
     void FixedUpdate()
     {
+        if (invincibleBool)
+        {
+            float blinkU = (Time.time - damageTime) / invincibleDur;
+            blinkU *= invTimesToBlink;
+            blinkU %= 1.0f;
+            bool visible = (blinkU > 0.5f);
+
+            if (Time.time - damageTime > invincibleDur)
+            {
+                invincibleBool = false;
+                visible = true;
+            }
+
+            viewCharacterTrans.gameObject.SetActive(visible);
+        }
+
+        if (knockbackBool)
+        {
+            if (Time.time - damageTime > knockbackDur)
+            {
+                knockbackBool = false;
+            }
+            float knockbackSpeed = knockbackDist / knockbackDur;
+            vel = knockbackDir * knockbackSpeed;
+            return;
+        }
+
         if (walking)
         {
             if ((walkTarget - pos).magnitude < speed * Time.fixedDeltaTime)
@@ -245,5 +400,175 @@ public class Mage : PT_MonoBehaviour
                 StopWalking();
             }
         }
+
+        EnemyBug bug = coll.gameObject.GetComponent<EnemyBug>();
+
+        if (bug != null) CollisionDamage(bug);
+        //if (bug != null) CollisionDamage(otherGO);
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        EnemySpiker spiker = other.GetComponent<EnemySpiker>();
+        if (spiker != null)
+        {
+            CollisionDamage(spiker);
+            //CollisionDamage(other.gameObject);
+        }
+    }
+
+    void CollisionDamage(Enemy enemy)
+    {
+        if (invincibleBool) return;
+        StopWalking();
+        ClearInput();
+        health -= enemy.touchDamage;
+
+        if (health <= 0)
+        {
+            Die();
+            return;
+        }
+
+        damageTime = Time.time;
+        knockbackBool = true;
+        knockbackDir = (pos - enemy.pos).normalized;
+        invincibleBool = true;
+    }
+
+    void Die()
+    {
+        Application.LoadLevel(0);
+    }
+
+    public void ShowTap(Vector3 loc)
+    {
+        GameObject go = Instantiate(tapIndicatorPrefab) as GameObject;
+        go.transform.position = loc;
+    }
+
+    public void SelectElement(ElementType elType)
+    {
+        if (elType == ElementType.none)
+        {
+            ClearElements();
+            return;
+        }
+
+        if(maxNumSelectedElements == 1)
+        {
+            ClearElements();
+        }
+
+        if (selectedElements.Count >= maxNumSelectedElements) return;
+        GameObject go = Instantiate(elementPrefabs[(int)elType]) as GameObject;
+        Element el = go.GetComponent<Element>();
+        el.transform.parent = this.transform;
+
+        selectedElements.Add(el);
+    }
+
+    public void ClearElements()
+    {
+        foreach (Element el in selectedElements)
+        {
+            Destroy(el.gameObject);
+        }
+
+        selectedElements.Clear();
+    }
+
+    void OrbitSelectedElements()
+    {
+        if (selectedElements.Count == 0) return;
+
+        Element el;
+        Vector3 vec;
+        float theta0, theta;
+        float tau = Mathf.PI * 2;
+
+        float rotPerElement = tau / selectedElements.Count;
+        theta0 = elementRotSpeed * Time.time * tau;
+
+        for (int i = 0; i < selectedElements.Count; i++)
+        {
+            theta = theta0 + i * rotPerElement;
+            el = selectedElements[i];
+            vec = new Vector3(Mathf.Cos(theta), Mathf.Sin(theta), 0);
+            vec *= elementRotDist;
+            vec.z = -0.5f;
+            el.lPos = vec;
+        }
+    }
+
+    //---------------- LineRenderer Code ----------------//
+
+    void AddPointToLiner(Vector3 pt)
+    {
+        pt.z = lineZ;
+
+        if(linePts.Count == 0)
+        {
+            linePts.Add(pt);
+            totalLineLength = 0;
+            return;
+        }
+
+        if (totalLineLength > lineMaxLength) return;
+
+        Vector3 pt0 = linePts[linePts.Count - 1];
+        Vector3 dir = pt - pt0;
+        float delta = dir.magnitude;
+        dir.Normalize();
+
+        totalLineLength += delta;
+
+        if(delta < lineMinDelta)
+        {
+            return;
+        }
+
+        if(delta > lineMaxDelta)
+        {
+            float numToAdd = Mathf.Ceil(delta / lineMaxDelta);
+            float midDelta = delta / numToAdd;
+            Vector3 ptMid;
+
+            for (int i = 1; i < numToAdd; i++)
+            {
+                ptMid = pt0 + (dir * midDelta * i);
+                linePts.Add(ptMid);
+            }
+        }
+
+        linePts.Add(pt);
+        UpdateLiner();
+    }
+
+    public void UpdateLiner()
+    {
+        int el = (int)selectedElements[0].type;
+
+        liner.SetColors(elementColors[el], elementColors[el]);
+
+        liner.SetVertexCount(linePts.Count);
+
+        for (int i = 0; i < linePts.Count; i++)
+        {
+            liner.SetPosition(i, linePts[i]);
+        }
+
+        liner.enabled = true;
+    }
+
+    public void ClearLiner()
+    {
+        liner.enabled = false;
+        linePts.Clear();
+    }
+
+    public void ClearInput()
+    {
+        mPhase = Mphase.idle;
     }
 }
